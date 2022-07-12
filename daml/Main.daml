@@ -1,0 +1,89 @@
+module Main where
+
+import Daml.Script
+
+type WarrantyID = ContractId Warranty
+
+template Warranty
+  with
+    issuer : Party
+    owner  : Party
+    serialNumber : Text
+    terms   : Text
+    duration: Int
+    pending: [Text]
+    history: [Text]
+  where
+    observer owner
+    signatory issuer
+
+    choice Transfer
+      : WarrantyID
+      with
+        newOwner: Party
+      controller owner
+      do
+        create this with
+          owner = newOwner
+    
+    choice Request
+      : WarrantyID
+      with
+        repairText: Text
+      controller owner
+      do
+        create this with
+          pending = this.pending ++ [repairText]
+    
+    choice Repair
+      : WarrantyID
+      controller issuer
+      do
+        create this with
+          history = this.history ++ pending
+          pending = []
+
+test : Script (WarrantyID)
+test = script do
+  company <- allocatePartyWithHint "Company" (PartyIdHint "Company")
+  companyId <- validateUserId "company"
+  createUser (User companyId (Some company)) [CanActAs company]
+  alice <- allocatePartyWithHint "Alice" (PartyIdHint "Alice")
+  aliceId <- validateUserId "alice"
+  createUser (User aliceId (Some alice)) [CanActAs alice]
+  bob <- allocatePartyWithHint "Bob" (PartyIdHint "Bob")
+  bobId <- validateUserId "bob"
+  createUser (User bobId (Some bob)) [CanActAs bob]
+  charlie <- allocatePartyWithHint "Charlie" (PartyIdHint "Charlie")
+  charlieId <- validateUserId "charlie"
+  createUser (User charlieId (Some charlie)) [CanActAs charlie]
+
+  c1 <- submit company do
+    createCmd Warranty with
+      issuer = company
+      owner = company
+      serialNumber = "12345678"
+      terms = "some terms"
+      duration = 30
+      history = []
+      pending = []
+
+  c2 <- submit company do
+    exerciseCmd c1 Transfer with
+      newOwner = alice
+
+  c3 <- submit alice do
+    exerciseCmd c2 Transfer with
+      newOwner = bob
+
+  c4 <- submit bob do
+    exerciseCmd c3 Transfer with
+      newOwner = charlie
+
+  c5 <- submit charlie do
+    exerciseCmd c4 Request with
+      repairText = "Please repair"
+  
+  submit charlie do
+    exerciseCmd c5 Transfer with
+      newOwner = alice
