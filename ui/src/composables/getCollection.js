@@ -1,31 +1,31 @@
-import {ref, watchEffect} from "vue";
-import {projectFirestore} from "@/firebase/config";
+import {ref, watchEffect} from 'vue';
+import {projectFirestore} from '@/firebase/config';
 
 const getCollection = (collection) => {
-    const documents = ref(null)
-    const error = ref(null)
+    const documents = ref(null);
+    const error = ref(null);
 
-    let collectionRef = projectFirestore.collection(collection).orderBy("time")
+    const collectionRef = projectFirestore.collection(collection).orderBy('time');
 
     const unsub = collectionRef.onSnapshot((snap) => {
-        let results = []
-        snap.docs.forEach(doc => {
-            results.push({ ...doc.data(), id: doc.id })
-        })
-        documents.value = results.reverse()
-        error.value = null
-        console.log(documents.value)
+        const results = [];
+        snap.docs.forEach((doc) => {
+            results.push({ ...doc.data(), id: doc.id });
+        });
+        documents.value = results.reverse();
+        error.value = null;
+        console.log(documents.value);
     }, (err) => {
-        console.log(err.message)
-        documents.value = null
-        error.value = "could not fetech data"
-    })
+        console.log(err.message);
+        documents.value = null;
+        error.value = 'could not fetech data';
+    });
 
     watchEffect((onInvalidate) => {
-        onInvalidate(() => unsub())
-    })
+        onInvalidate(() => unsub());
+    });
 
-    return {error, documents}
-}
+    return {error, documents};
+};
 
-export default getCollection
+export default getCollection;
